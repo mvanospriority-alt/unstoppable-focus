@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unstoppable Focus | Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+:root{--primary:#367bff;--primary-dark:#1858d8;--background:#080f20;--card:#111d33;--text:#eef5ff;--muted:#9aabc5;--green:#4ee0a0;--red:#ff7385;--border:#263957}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 80% 0%,#18376a 0%,transparent 37%),var(--background);color:var(--text);min-height:100vh}
+.container{max-width:1120px;margin:auto;padding:28px 20px 80px}
+.header{display:flex;align-items:center;gap:20px;margin:8px 0 28px;padding:18px 22px;border:1px solid var(--border);background:linear-gradient(115deg,#152b4c,#0e1b30);border-radius:24px}
+.logo-image{width:96px;height:96px;object-fit:contain;border-radius:15px;background:white;padding:4px}
+h1{font-size:clamp(26px,4vw,39px);letter-spacing:-1px;margin:0 0 5px}h2{font-size:20px;margin:0 0 15px}h3{font-size:16px;margin:20px 0 10px}.subtitle,.small-note{color:var(--muted);font-size:14px;line-height:1.55}.subtitle{margin:0}
+.card{background:linear-gradient(160deg,#14243c,#101b2f);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px;box-shadow:0 14px 32px #0002}
+#loginScreen{max-width:480px;margin:55px auto}#dashboard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+#dashboard>.wide-card,#dashboard>#search,#dashboard>#appList,#dashboard>#logoutButton{grid-column:1/-1}
+input,button,select{font:inherit}input,select{background:#0c1729;color:var(--text);border:1px solid #304663;border-radius:12px;padding:12px}input:not([type=checkbox]),select{width:100%}input{margin-top:8px}input:focus,select:focus{outline:2px solid #4b87ff;outline-offset:1px}
+button{border:1px solid transparent;border-radius:11px;padding:11px 15px;cursor:pointer;font-weight:650;transition:background .15s,transform .15s}button:hover:not(:disabled){transform:translateY(-1px)}button:disabled{opacity:.43;cursor:default}
+.primary{background:var(--primary);color:white;width:100%;margin-top:16px}.primary:hover{background:var(--primary-dark)}
+.hidden{display:none!important}.status{padding:12px 15px;border-radius:12px;background:#103f3a;color:#83f3bf;border:1px solid #22675a;margin:10px 0 18px}
+.summary{display:flex;flex-wrap:wrap;gap:12px}.stat{flex:1;min-width:145px;border:1px solid var(--border);background:#0c192d;padding:17px;border-radius:15px}.stat strong{display:block;font-size:23px;margin-top:5px}.stat span{color:var(--muted);font-size:12px}
+.search{margin:5px 0 17px!important;padding:16px!important;background:#14243c!important}
+.app{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)}.app:last-child{border-bottom:0}.app-info{min-width:0;flex:1}.app-name{font-weight:700;overflow-wrap:anywhere}.app-status{font-size:12px;margin-top:6px;color:var(--muted)}.blocked{color:var(--red)}.allowed{color:var(--green)}
+.block-btn{background:#542738;color:#ffb6c0;border-color:#7d3b4d}.allow-btn,.unlock-btn{background:#154b40;color:#9cf7cb;border-color:#256b58}.time-btn{background:#233a5d;color:#b9d4ff;border-color:#3c5680}
+.app-actions,.control-row{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end}.app-actions button{padding:9px 12px;font-size:12px}.control-row{justify-content:flex-start;margin-top:14px}.control-row button{flex:1 1 170px}
+.category{font-size:15px;text-transform:uppercase;letter-spacing:.09em;color:#a6c6ff;font-weight:750;margin:25px 0 5px}.logout{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:12px}
+.modal{position:fixed;inset:0;background:#030815d9;display:flex;justify-content:center;align-items:center;padding:20px;z-index:100}.modal-content{background:#172740;border:1px solid var(--border);border-radius:22px;padding:25px;width:100%;max-width:450px}.time-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.message{color:#ff9ba9;font-size:13px;margin-top:12px;overflow-wrap:anywhere}.request-row,.schedule-entry{border-top:1px solid var(--border);padding:14px 0}.request-actions{display:flex;gap:9px;margin-top:10px}.request-actions button:first-child{background:#154b40;color:#9cf7cb}.request-actions button:last-child{background:#542738;color:#ffb6c0}
+.schedule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.schedule-grid label{display:block;font-size:13px;font-weight:600}.schedule-grid input,.schedule-grid select{margin-top:7px}.schedule-grid .wide{grid-column:1/-1}.day-choices{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.day-choices label{display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:#1b304d;font-size:13px}.day-choices input,.exception-row input{width:auto;margin:0}.exception-list{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:8px 12px}.exception-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#82afff;font-weight:800;margin-bottom:6px}
+@media(max-width:760px){#dashboard{display:block}.header{padding:16px;gap:12px}.logo-image{width:74px;height:74px}.container{padding:15px 12px 50px}.card{padding:17px}.app{align-items:flex-start;flex-direction:column}.app-actions{justify-content:flex-start}.schedule-grid{grid-template-columns:1fr}.time-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="header">
+<img src="unstoppable_logo.png" alt="Unstoppable Focus logo" class="logo-image">
+<div><div class="eyebrow">YOUR FOCUS. YOUR POWER.</div><h1>Unstoppable Focus</h1><p class="subtitle">Jouw controlecentrum voor focus en vrijheid</p></div>
+</div>
+<!-- INLOGSCHERM -->
+
+  <div id="loginScreen" class="card">
+    <h2>Welkom terug</h2>
+    <p class="subtitle">Log in om je eigen apparaten en focusinstellingen te beheren.</p>
+
+    <form id="loginForm">
+      <input
+        id="email"
+        type="email"
+        placeholder="E-mailadres"
+        autocomplete="username"
+        required
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Wachtwoord"
+        autocomplete="current-password"
+        required
+      >
+
+      <button class="primary" type="submit">Inloggen</button>
+    </form>
+
+    <div id="loginError" class="message"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+
+  <div id="dashboard" class="hidden">
+<div class="card">
+      <h2>📩 Toestemmingsverzoeken</h2>
+      <div id="requestList" class="small-note">Verzoeken laden...</div>
+      <div id="requestError" class="message" role="status"></div>
+    </div>
+
+    <div class="card wide-card">
+      <h2>📱 Mijn telefoon</h2>
+      <div id="connectionStatus" class="status">
+        Gegevens ophalen...
+      </div>
+      <div class="summary">
+<div class="stat"><span>GEBLOKKEERD</span><strong id="blockedCount">0 apps</strong></div>
+<div class="stat"><span>GEÏNSTALLEERDE APPS</span><strong id="totalAppsCount">0</strong></div>
+<div class="stat"><span>ACTIEVE SCHEMA'S</span><strong id="activeSchedulesCount">0</strong></div>
+</div>
+    </div>
+<div class="card wide-card">
+      <h2>📱 Alle apps beheren</h2>
+      <div class="control-row">
+        <button id="blockAllAppsButton" class="block-btn" type="button">🔴 Alle apps blokkeren</button>
+        <button id="allowAllAppsButton" class="allow-btn" type="button">🟢 Alle apps vrijgeven</button>
+      </div>
+      <div id="bulkAppsError" class="message" role="alert"></div>
+    </div>
+
+    <div class="card wide-card">
+      <h2>🕒 Automatische tijdschema's</h2>
+      <p class="small-note">Maak algemene schema's of schema's voor één app. Tijdzone: Nederland (Europe/Amsterdam). </p>
+      <form id="scheduleForm">
+        <div class="schedule-grid">
+          <label class="wide">Naam van schema<input id="scheduleName" maxlength="80" placeholder="Bijv. Avondrust" required></label>
+          <label>Toepassen op<select id="scheduleType"><option value="all">Alle apps</option><option value="app">Eén app</option></select></label>
+          <label id="scheduleAppWrap" class="hidden">Welke app?<select id="scheduleApp"></select></label>
+          <label>Vanaf<input id="scheduleStart" type="time" value="21:00" required></label>
+          <label>Tot<input id="scheduleEnd" type="time" value="08:00" required></label>
+        </div>
+        <p class="small-note">Op welke dagen begint het schema?</p>
+        <div class="day-choices" id="scheduleDays">
+          <label><input type="checkbox" value="1" checked>Ma</label>
+          <label><input type="checkbox" value="2" checked>Di</label>
+          <label><input type="checkbox" value="3" checked>Wo</label>
+          <label><input type="checkbox" value="4" checked>Do</label>
+          <label><input type="checkbox" value="5" checked>Vr</label>
+          <label><input type="checkbox" value="6" checked>Za</label>
+          <label><input type="checkbox" value="7" checked>Zo</label>
+        </div>
+        <input type="hidden" id="scheduleEditId">
+        <div class="control-row">
+          <button type="submit" id="scheduleSave" class="allow-btn">💾 Schema opslaan</button>
+          <button type="button" id="scheduleCancel" class="logout hidden">Annuleren</button>
+        </div>
+      </form>
+      <div id="scheduleError" class="message" role="alert"></div>
+      <h3>Ingestelde schema's</h3>
+      <div id="scheduleList" class="small-note">Schema's laden...</div>
+    </div>
+    <div class="card wide-card">
+      <h2>✅ Uitzonderingen op algemene schema's</h2>
+      <p class="small-note">Aangevinkte apps vallen buiten algemene schema's. Een eigen appschema of handmatige blokkade kan ze nog wel blokkeren.</p>
+      <div id="exceptionList" class="exception-list">Apps laden...</div>
+      <div id="exceptionError" class="message" role="alert"></div>
+    </div>
+
+    <input
+      id="search"
+      class="search"
+      type="search"
+      placeholder="🔍 Zoek een app..."
+    >
+
+    <div id="appList" class="card">
+      Apps laden...
+    </div>
+
+    <button id="logoutButton" class="logout">
+      Uitloggen
+    </button>
+
+  </div>
+</div>
+
+<!-- TIJDELIJK VRIJGEVEN -->
+
+<div id="unlockModal" class="modal hidden">
+  <div class="modal-content">
+    <h2>🔓 Tijdelijk vrijgeven</h2>
+
+    <p id="unlockAppName"></p>
+
+    <div class="time-grid">
+      <button class="time-btn" data-minutes="5">5 min</button>
+      <button class="time-btn" data-minutes="15">15 min</button>
+      <button class="time-btn" data-minutes="30">30 min</button>
+      <button class="time-btn" data-minutes="60">1 uur</button>
+      <button class="time-btn" data-minutes="120">2 uur</button>
+      <button class="time-btn" data-minutes="180">3 uur</button>
+    </div>
+
+    <button id="cancelUnlock" class="logout">
+      Annuleren
+    </button>
+  </div>
+</div>
+
+<script>
+  // SUPABASE INSTELLINGEN
+
+  const SUPABASE_URL =
+  "https://bxhqbvtwsnoklfjoorbb.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_XI3IcMs-3qrRcI_BHVMnFA_tl5YzEFY";
+
+// Gebruikers-ID wordt automatisch bepaald na inloggen
+let OWNER_ID = null;
+
+// Verbinding met Unstoppable Focus
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+  let apps = [];
+  let selectedApp = null;
+  let refreshTimer = null;
+  let busy = false;
+  
+  let requestBusy = false;
+  let requestLoading = false;
+  let schedules = [];
+  let scheduleExceptions = new Set();
+  let scheduleBusy = false;
+  let scheduleLoading = false;
+  let exceptionBusy = false;
+
+  const loginScreen = document.getElementById("loginScreen");
+  const dashboard = document.getElementById("dashboard");
+  const appList = document.getElementById("appList");
+
+  // INLOGGEN
+
+  document.getElementById("loginForm").addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const errorBox = document.getElementById("loginError");
+      errorBox.textContent = "";
+
+      const { error } = await db.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        errorBox.textContent = error.message;
+        return;
+      }
+
+      await showDashboard();
+    }
+  );
+
+  // CONTROLEER DE ACTIEVE GEBRUIKER
+
+  async function showDashboard() {
+  const { data: { user } } = await db.auth.getUser();
+
+  if (!user) {
+    showLogin();
+    return;
+  }
+  OWNER_ID = user.id;
+
+  loginScreen.classList.add("hidden");
+  dashboard.classList.remove("hidden");
+
+  await Promise.all([
+    loadApps(),
+    loadSchedules(),
+    loadExceptions()
+  ]);
+
+  if (refreshTimer) clearInterval(refreshTimer);
+
+  refreshTimer = setInterval(() => {
+    loadApps();
+    loadSchedules();
+    loadExceptions();
+  }, 5000);
+}
+
+
+  // VERZOEKEN: alleen openstaande verzoeken tonen
+  async function loadRequests() {
+    if (requestLoading || requestBusy) return;
+    requestLoading = true;
+    try {
+      const { data, error } = await db.from("unlock_requests")
+        .select("id, package_name, app_name, requested_minutes, created_at")
+        .eq("owner_id", OWNER_ID)
+        .eq("status", "pending")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const list = document.getElementById("requestList");
+      list.replaceChildren();
+      if (!data || !data.length) {
+        list.textContent = "Geen openstaande verzoeken.";
+      } else {
+        for (const req of data) {
+          const row = document.createElement("div");
+          row.className = "request-row";
+          const title = document.createElement("strong");
+          title.textContent = req.app_name || req.package_name;
+          const info = document.createElement("div");
+          info.className = "small-note";
+          info.textContent = `${req.requested_minutes} minuten · ` +
+            new Date(req.created_at).toLocaleString("nl-NL");
+          const actions = document.createElement("div");
+          actions.className = "request-actions";
+          const yes = document.createElement("button");
+          yes.textContent = "✅ Goedkeuren";
+          yes.onclick = () => answerRequest(req, true);
+          const no = document.createElement("button");
+          no.textContent = "❌ Weigeren";
+          no.onclick = () => answerRequest(req, false);
+          actions.append(yes, no);
+          row.append(title, info, actions);
+          list.appendChild(row);
+        }
+      }
+      document.getElementById("requestError").textContent = "";
+    } catch (error) {
+      document.getElementById("requestError").textContent =
+        "Verzoeken ophalen mislukt: " + error.message;
+    } finally { requestLoading = false; }
+  }
+
+  async function answerRequest(req, approve) {
+    if (requestBusy || busy) return;
+    requestBusy = true;
+    document.getElementById("requestError").textContent = "";
+    try {
+      if (approve) {
+        const until = new Date(Date.now() +
+          Number(req.requested_minutes) * 60000).toISOString();
+        const { data, error } = await db.from("app_rules")
+          .update({
+            is_blocked: true,
+            unlocked_until: until,
+            updated_at: new Date().toISOString()
+          })
+          .eq("owner_id", OWNER_ID)
+          .eq("package_name", req.package_name)
+          .select("id");
+        if (error) throw error;
+        if (!data || data.length !== 1) {
+          throw new Error("App-regel niet gevonden of geen toegang.");
+        }
+        await notifyPhone();
+      }
+      const { data, error } = await db.from("unlock_requests")
+        .update({
+          status: approve ? "approved" : "denied",
+          responded_at: new Date().toISOString()
+        })
+        .eq("id", req.id)
+        .eq("owner_id", OWNER_ID)
+        .eq("status", "pending")
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length !== 1) {
+        throw new Error("Verzoek is al behandeld of niet toegankelijk.");
+      }
+    } catch (error) {
+      document.getElementById("requestError").textContent =
+        "Verzoek verwerken mislukt: " + error.message;
+    } finally {
+      requestBusy = false;
+      await Promise.all([loadRequests(), loadApps()]);
+    }
+  }
+
+  // Synchroniseer de telefoon van de ingelogde gebruiker.
+  async function notifyPhone() {
+    const { data, error } = await db.functions.invoke("send-focus-push", {
+      body: { action: "sync_rules" }
+    });
+    if (error) throw new Error("Pushbericht mislukt: " + error.message);
+    if (!data?.success) throw new Error("Telefoon niet bereikt: " + (data?.error || "onbekende fout"));
+  }
+
+
+  // Alles tegelijk beheren; de individuele knoppen blijven beschikbaar.
+  async function setAllAppsBlocked(enabled) {
+    if (busy) return;
+    if (!apps.length) {
+      document.getElementById("bulkAppsError").textContent = "Er zijn geen apps geladen.";
+      return;
+    }
+    busy = true;
+    document.getElementById("blockAllAppsButton").disabled = true;
+    document.getElementById("allowAllAppsButton").disabled = true;
+    document.getElementById("bulkAppsError").textContent = "";
+    try {
+      const { data, error } = await db.from("app_rules")
+        .update({ is_blocked: enabled, unlocked_until: null, updated_at: new Date().toISOString() })
+        .eq("owner_id", OWNER_ID)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length !== apps.length) {
+        throw new Error("Niet alle appregels konden worden bijgewerkt.");
+      }
+      await notifyPhone();
+    } catch (error) {
+      document.getElementById("bulkAppsError").textContent =
+        "Wijziging mogelijk deels verwerkt; controleer: " + error.message;
+    } finally {
+      busy = false;
+      document.getElementById("blockAllAppsButton").disabled = false;
+      document.getElementById("allowAllAppsButton").disabled = false;
+      await loadApps();
+    }
+  }
+
+  document.getElementById("blockAllAppsButton").addEventListener("click", () => setAllAppsBlocked(true));
+  document.getElementById("allowAllAppsButton").addEventListener("click", () => setAllAppsBlocked(false));
+
+  // TIJDSCHEMA'S
+  const dayNames = ['','Ma','Di','Wo','Do','Vr','Za','Zo'];
+  const scheduleType = document.getElementById('scheduleType');
+  scheduleType.addEventListener('change', () => {
+    document.getElementById('scheduleAppWrap').classList.toggle('hidden', scheduleType.value !== 'app');
+  });
+
+  function renderScheduleAppOptions() {
+    const select = document.getElementById('scheduleApp');
+    const previous = select.value;
+    select.replaceChildren();
+    for (const app of apps) {
+      const option = document.createElement('option');
+      option.value = app.package_name;
+      option.textContent = app.app_name;
+      select.appendChild(option);
+    }
+    if (apps.some(a => a.package_name === previous)) select.value = previous;
+  }
+
+  function resetScheduleForm() {
+    document.getElementById('scheduleForm').reset();
+    document.getElementById('scheduleEditId').value = '';
+    document.getElementById('scheduleSave').textContent = '💾 Schema opslaan';
+    document.getElementById('scheduleCancel').classList.add('hidden');
+    scheduleType.dispatchEvent(new Event('change'));
+  }
+  document.getElementById('scheduleCancel').addEventListener('click', resetScheduleForm);
+
+  async function loadSchedules() {
+    if (scheduleLoading || scheduleBusy) return;
+    scheduleLoading = true;
+    try {
+      const { data, error } = await db.from('app_schedules').select('*')
+        .eq('owner_id', OWNER_ID).order('created_at', { ascending: true });
+      if (error) throw error;
+      schedules = data || [];
+      document.getElementById('scheduleError').textContent = '';
+      renderSchedules();
+      document.getElementById('activeSchedulesCount').textContent = schedules.filter(s => s.enabled).length;
+    } catch (e) {
+      document.getElementById('scheduleError').textContent = 'Schema’s laden mislukt: ' + e.message;
+    } finally { scheduleLoading = false; }
+  }
+
+  function renderSchedules() {
+    const list = document.getElementById('scheduleList');
+    list.replaceChildren();
+    if (!schedules.length) { list.textContent = 'Nog geen tijdschema’s.'; return; }
+    for (const item of schedules) {
+      const row = document.createElement('div');
+      row.className = 'schedule-entry';
+      const title = document.createElement('strong');
+      title.textContent = (item.enabled ? '🟢 ' : '⚪ ') + item.name;
+      const description = document.createElement('div');
+      description.className = 'small-note';
+      const app = apps.find(a => a.package_name === item.package_name);
+      const target = item.schedule_type === 'all' ? 'Alle apps' : (app?.app_name || item.package_name);
+      description.textContent = `${target} · ${(item.days || []).map(d => dayNames[d]).join(', ')} · ${item.start_time.slice(0,5)}–${item.end_time.slice(0,5)}`;
+      const actions = document.createElement('div');
+      actions.className = 'control-row';
+      for (const [label, handler, css] of [
+        ['✏️ Bewerken', () => editSchedule(item), 'time-btn'],
+        [item.enabled ? '⏸ Uitzetten' : '▶️ Aanzetten', () => toggleSchedule(item), 'time-btn'],
+        ['🗑 Verwijderen', () => deleteSchedule(item), 'block-btn']
+      ]) {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.textContent = label; btn.className = css;
+        btn.disabled = scheduleBusy; btn.addEventListener('click', handler);
+        actions.appendChild(btn);
+      }
+      row.append(title, description, actions);
+      list.appendChild(row);
+    }
+  }
+
+  function editSchedule(item) {
+    document.getElementById('scheduleEditId').value = item.id;
+    document.getElementById('scheduleName').value = item.name;
+    scheduleType.value = item.schedule_type;
+    scheduleType.dispatchEvent(new Event('change'));
+    renderScheduleAppOptions();
+    if (item.package_name) document.getElementById('scheduleApp').value = item.package_name;
+    document.getElementById('scheduleStart').value = item.start_time.slice(0,5);
+    document.getElementById('scheduleEnd').value = item.end_time.slice(0,5);
+    document.querySelectorAll('#scheduleDays input').forEach(input => {
+      input.checked = item.days.includes(Number(input.value));
+    });
+    document.getElementById('scheduleSave').textContent = '💾 Wijzigingen opslaan';
+    document.getElementById('scheduleCancel').classList.remove('hidden');
+    document.getElementById('scheduleForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  document.getElementById('scheduleForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (scheduleBusy) return;
+    const days = [...document.querySelectorAll('#scheduleDays input:checked')].map(el => Number(el.value));
+    const name = document.getElementById('scheduleName').value.trim();
+    const start = document.getElementById('scheduleStart').value;
+    const end = document.getElementById('scheduleEnd').value;
+    const packageName = scheduleType.value === 'app' ? document.getElementById('scheduleApp').value : null;
+    const errorBox = document.getElementById('scheduleError');
+    if (!name || !days.length || !start || !end || start === end || (scheduleType.value === 'app' && !packageName)) {
+      errorBox.textContent = 'Vul een naam, app (indien nodig), verschillende tijden en minimaal één dag in.';
+      return;
+    }
+    const id = document.getElementById('scheduleEditId').value;
+    const existing = schedules.find(item => item.id === id);
+    const payload = { owner_id: OWNER_ID, name, schedule_type: scheduleType.value,
+      package_name: packageName, days, start_time: start, end_time: end,
+      enabled: existing ? existing.enabled : true, updated_at: new Date().toISOString() };
+    scheduleBusy = true;
+    document.getElementById('scheduleSave').disabled = true;
+    errorBox.textContent = '';
+    try {
+      const query = id ? db.from('app_schedules').update(payload).eq('id', id).eq('owner_id', OWNER_ID)
+                       : db.from('app_schedules').insert(payload);
+      const { data, error } = await query.select('id');
+      if (error) throw error;
+      if (data?.length !== 1) throw new Error('Schema niet opgeslagen (geen toegang).');
+      resetScheduleForm();
+      await loadSchedulesAfterMutation();
+    } catch (e) { errorBox.textContent = 'Opslaan mislukt: ' + e.message; }
+    finally { scheduleBusy = false; document.getElementById('scheduleSave').disabled = false; }
+  });
+
+  async function loadSchedulesAfterMutation() {
+    scheduleBusy = false;
+    await loadSchedules();
+    scheduleBusy = true;
+  }
+  async function toggleSchedule(item) {
+    if (scheduleBusy) return;
+    scheduleBusy = true;
+    try {
+      const { data, error } = await db.from('app_schedules')
+        .update({ enabled: !item.enabled, updated_at: new Date().toISOString() })
+        .eq('id', item.id).eq('owner_id', OWNER_ID).select('id');
+      if (error) throw error;
+      if (data?.length !== 1) throw new Error('Schema niet bijgewerkt.');
+      await loadSchedulesAfterMutation();
+    } catch(e) { document.getElementById('scheduleError').textContent = e.message; }
+    finally { scheduleBusy = false; }
+  }
+  async function deleteSchedule(item) {
+    if (scheduleBusy || !confirm(`Schema "${item.name}" verwijderen?`)) return;
+    scheduleBusy = true;
+    try {
+      const { data, error } = await db.from('app_schedules').delete()
+        .eq('id', item.id).eq('owner_id', OWNER_ID).select('id');
+      if (error) throw error;
+      if (data?.length !== 1) throw new Error('Schema niet verwijderd.');
+      await loadSchedulesAfterMutation();
+    } catch(e) { document.getElementById('scheduleError').textContent = e.message; }
+    finally { scheduleBusy = false; }
+  }
+
+  async function loadExceptions() {
+    if (exceptionBusy) return;
+    try {
+      const { data, error } = await db.from('schedule_exceptions')
+        .select('package_name').eq('owner_id', OWNER_ID);
+      if (error) throw error;
+      scheduleExceptions = new Set((data || []).map(row => row.package_name));
+      document.getElementById('exceptionError').textContent = '';
+      renderExceptions();
+    } catch(e) { document.getElementById('exceptionError').textContent = 'Uitzonderingen laden mislukt: ' + e.message; }
+  }
+  function renderExceptions() {
+    const list = document.getElementById('exceptionList');
+    list.replaceChildren();
+    if (!apps.length) { list.textContent = 'Geen apps geladen.'; return; }
+    for (const app of apps) {
+      const label = document.createElement('label');
+      label.className = 'exception-row';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox'; checkbox.checked = scheduleExceptions.has(app.package_name);
+      checkbox.disabled = exceptionBusy;
+      checkbox.addEventListener('change', () => setException(app.package_name, checkbox.checked));
+      const name = document.createElement('span'); name.textContent = app.app_name;
+      label.append(checkbox, name); list.appendChild(label);
+    }
+  }
+  async function setException(packageName, enabled) {
+    if (exceptionBusy) return;
+    exceptionBusy = true;
+    renderExceptions();
+    try {
+      const query = enabled
+        ? db.from('schedule_exceptions').upsert({ owner_id: OWNER_ID, package_name: packageName }, { onConflict: 'owner_id,package_name' })
+        : db.from('schedule_exceptions').delete().eq('owner_id', OWNER_ID).eq('package_name', packageName);
+      const { error } = await query;
+      if (error) throw error;
+      if (enabled) scheduleExceptions.add(packageName); else scheduleExceptions.delete(packageName);
+      document.getElementById('exceptionError').textContent = '';
+    } catch(e) { document.getElementById('exceptionError').textContent = 'Opslaan mislukt: ' + e.message; }
+    finally { exceptionBusy = false; await loadExceptions(); }
+  }
+
+  // APPS OPHALEN
+
+  async function loadApps() {
+  if (busy) return;
+
+  const { data: { user }, error: authError } = await db.auth.getUser();
+
+  if (authError || !user) {
+    showLogin();
+    return;
+  }
+
+  const { data, error } = await db
+    .from("app_rules")
+    .select("*")
+    .eq("owner_id", user.id)
+    .order("app_name");
+
+  if (error) {
+    document.getElementById("connectionStatus").textContent =
+      "⚠️ Verbinding mislukt: " + error.message;
+    return;
+  }
+
+  apps = data || [];
+
+  document.getElementById("connectionStatus").textContent =
+    "🟢 Verbonden met Supabase";
+
+  document.getElementById("totalAppsCount").textContent = apps.length;
+  renderApps();
+  renderScheduleAppOptions();
+  renderExceptions();
+}
+
+  // CATEGORIEËN
+
+  function getCategory(app) {
+    const name = app.app_name.toLowerCase();
+
+    if (
+      name.includes("instagram") ||
+      name.includes("facebook") ||
+      name.includes("tiktok") ||
+      name.includes("snapchat") ||
+      name.includes("reddit")
+    ) {
+      return "📱 Social media";
+    }
+
+    if (
+      name.includes("ibkr") ||
+      name.includes("trading") ||
+      name.includes("broker") ||
+      name.includes("trade")
+    ) {
+      return "📈 Trading";
+    }
+
+    if (
+      name.includes("youtube") ||
+      name.includes("netflix") ||
+      name.includes("spotify") ||
+      name.includes("prime video")
+    ) {
+      return "🎬 Entertainment";
+    }
+
+    return "📦 Overige apps";
+  }
+
+  function isTemporarilyUnlocked(app) {
+    if (!app.unlocked_until) return false;
+
+    return new Date(app.unlocked_until).getTime() > Date.now();
+  }
+
+  // APPS TONEN
+
+  function renderApps() {
+    const search = document
+      .getElementById("search")
+      .value
+      .toLowerCase();
+
+    const filtered = apps.filter(app =>
+      app.app_name.toLowerCase().includes(search)
+    );
+
+    const blocked = apps.filter(app =>
+      app.is_blocked && !isTemporarilyUnlocked(app)
+    ).length;
+
+    document.getElementById("blockedCount").textContent =
+      blocked + " apps";
+
+    appList.innerHTML = "";
+
+    if (filtered.length === 0) {
+      appList.textContent = "Geen apps gevonden.";
+      return;
+    }
+
+    const categories = {};
+
+    filtered.forEach(app => {
+      const category = getCategory(app);
+
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+
+      categories[category].push(app);
+    });
+
+    Object.entries(categories).forEach(([category, items]) => {
+      const title = document.createElement("div");
+      title.className = "category";
+      title.textContent = category;
+      appList.appendChild(title);
+
+      items.forEach(app => {
+        const activeBlock =
+          app.is_blocked && !isTemporarilyUnlocked(app);
+
+        const row = document.createElement("div");
+        row.className = "app";
+
+        const info = document.createElement("div");
+        info.className = "app-info";
+
+        const name = document.createElement("div");
+        name.className = "app-name";
+        name.textContent = "📱 " + app.app_name;
+
+        const status = document.createElement("div");
+        status.className =
+          "app-status " + (activeBlock ? "blocked" : "allowed");
+
+        if (isTemporarilyUnlocked(app)) {
+          const until = new Date(app.unlocked_until);
+
+          status.textContent =
+            "🟡 Tijdelijk vrij tot " +
+            until.toLocaleTimeString("nl-NL", {
+              hour: "2-digit",
+              minute: "2-digit"
+            });
+        } else {
+          status.textContent = activeBlock
+            ? "🔴 Geblokkeerd"
+            : "🟢 Altijd toegestaan";
+        }
+
+        info.appendChild(name);
+        info.appendChild(status);
+
+        const actions = document.createElement("div");
+        actions.className = "app-actions";
+
+        // Instellingen van het ingelogde account.
+        const blockButton = document.createElement("button");
+        blockButton.className = "block-btn";
+        blockButton.textContent = "🔴 Blokkeren";
+        blockButton.disabled = app.is_blocked && !isTemporarilyUnlocked(app);
+        blockButton.onclick = () => blockApp(app);
+        actions.appendChild(blockButton);
+
+        const allowButton = document.createElement("button");
+        allowButton.className = "allow-btn";
+        allowButton.textContent = "🟢 Altijd toestaan";
+        allowButton.disabled = !app.is_blocked;
+        allowButton.onclick = () => allowApp(app);
+        actions.appendChild(allowButton);
+
+        if (app.is_blocked) {
+          const temporaryButton = document.createElement("button");
+          temporaryButton.className = "unlock-btn";
+          temporaryButton.textContent = "🟡 Tijdelijk";
+          temporaryButton.onclick = () => openUnlockModal(app);
+          actions.appendChild(temporaryButton);
+        }
+
+        row.appendChild(info);
+        row.appendChild(actions);
+        appList.appendChild(row);
+      });
+    });
+  }
+
+  // APP BLOKKEREN
+
+  async function blockApp(app) {
+    if (busy) return;
+    busy = true;
+
+    try {
+      const { error } = await db
+        .from("app_rules")
+        .update({
+          is_blocked: true,
+          unlocked_until: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", app.id)
+        .eq("owner_id", OWNER_ID);
+
+      if (error) throw error;
+      await notifyPhone();
+
+    } catch (error) {
+      alert("Blokkade opgeslagen of deels verwerkt; controleer push: " + error.message);
+    } finally {
+      busy = false;
+      await loadApps();
+    }
+  }
+
+  // PERMANENT TOESTAAN
+  async function allowApp(app) {
+    if (busy) return;
+    busy = true;
+    try {
+      const { data, error } = await db
+        .from("app_rules")
+        .update({
+          is_blocked: false,
+          unlocked_until: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", app.id)
+        .eq("owner_id", OWNER_ID)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length !== 1) throw new Error("Geen toegang tot app-regel.");
+      await notifyPhone();
+    } catch (error) {
+      alert("Toestaan opgeslagen of deels verwerkt; controleer push: " + error.message);
+    } finally {
+      busy = false;
+      await loadApps();
+    }
+  }
+
+  // TIJDELIJK VRIJGEVEN
+
+  function openUnlockModal(app) {
+    selectedApp = app;
+
+    document.getElementById("unlockAppName").textContent =
+      app.app_name;
+
+    document.getElementById("unlockModal")
+      .classList.remove("hidden");
+  }
+
+  function closeUnlockModal() {
+    selectedApp = null;
+
+    document.getElementById("unlockModal")
+      .classList.add("hidden");
+  }
+
+  document.getElementById("cancelUnlock")
+    .addEventListener("click", closeUnlockModal);
+
+  document.querySelectorAll("[data-minutes]").forEach(button => {
+    button.addEventListener("click", async () => {
+      if (!selectedApp || busy) return;
+
+      const app = selectedApp;
+      const minutes = Number(button.dataset.minutes);
+
+      const until = new Date(
+        Date.now() + minutes * 60 * 1000
+      ).toISOString();
+
+      busy = true;
+
+      try {
+        const { error } = await db
+          .from("app_rules")
+          .update({
+            is_blocked: true,
+            unlocked_until: until,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", app.id)
+          .eq("owner_id", OWNER_ID);
+
+        if (error) throw error;
+        await notifyPhone();
+
+        closeUnlockModal();
+
+      } catch (error) {
+        alert("Vrijgeven opgeslagen of deels verwerkt; controleer push: " + error.message);
+      } finally {
+        busy = false;
+        await loadApps();
+      }
+    });
+  });
+
+  // ZOEKEN
+
+  document.getElementById("search")
+    .addEventListener("input", renderApps);
+
+  // UITLOGGEN
+
+  document.getElementById("logoutButton")
+    .addEventListener("click", async () => {
+      await db.auth.signOut();
+      showLogin();
+    });
+
+  function showLogin() {
+    OWNER_ID = null;
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+    dashboard.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+  }
+
+  // AUTOMATISCH INGELOGD BLIJVEN
+
+  db.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      showDashboard();
+    } else {
+      showLogin();
+    }
+  });
+
+</script>
+</body>
+</html>
