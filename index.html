@@ -68,19 +68,19 @@ button{border:1px solid transparent;border-radius:11px;padding:11px 15px;cursor:
       <button class="primary" type="submit">Inloggen</button>
     </form>
 
-    <button id="forgotPasswordButton" class="logout" type="button">Wachtwoord vergeten?</button>
-    <div id="loginError" class="message" role="status"></div>
+    <button id="forgotPassword" class="logout" type="button">Wachtwoord vergeten?</button>
+    <div id="loginError" class="message"></div>
   </div>
 
   <div id="passwordScreen" class="card hidden" style="max-width:480px;margin:55px auto">
-    <h2 id="passwordTitle">Stel je wachtwoord in</h2>
-    <p id="passwordHint" class="subtitle">Kies een wachtwoord van minimaal 8 tekens.</p>
-    <form id="passwordForm">
-      <input id="newPassword" type="password" placeholder="Nieuw wachtwoord" autocomplete="new-password" minlength="8" required>
-      <input id="confirmPassword" type="password" placeholder="Herhaal wachtwoord" autocomplete="new-password" minlength="8" required>
-      <button class="primary" type="submit">Wachtwoord opslaan</button>
+    <h2>Stel je wachtwoord in</h2>
+    <p class="subtitle">Kies een wachtwoord om je account te gebruiken.</p>
+    <form id="newPasswordForm">
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Nieuw wachtwoord (minimaal 8 tekens)" required>
+      <input id="repeatPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Herhaal wachtwoord" required>
+      <button type="submit" class="primary">Wachtwoord opslaan</button>
     </form>
-    <div id="passwordError" class="message" role="status"></div>
+    <div id="passwordMessage" class="message"></div>
   </div>
 
   <!-- DASHBOARD -->
@@ -192,13 +192,6 @@ button{border:1px solid transparent;border-radius:11px;padding:11px 15px;cursor:
 </div>
 
 <script>
-  // Leg de uitnodigings- of herstelstatus vast voordat Supabase de URL verwerkt.
-  const initialAuthParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const initialAuthType = initialAuthParams.get("type");
-  const initialAuthError = initialAuthParams.get("error_description");
-  let passwordSetupPending = initialAuthType === "invite" || initialAuthType === "recovery";
-  let passwordFlow = initialAuthType;
-
   // SUPABASE INSTELLINGEN
 
   const SUPABASE_URL =
@@ -260,62 +253,48 @@ const db = window.supabase.createClient(
     }
   );
 
-  const passwordScreen = document.getElementById("passwordScreen");
-
-  function showPasswordScreen(type) {
-    passwordSetupPending = true;
-    passwordFlow = type;
+  let setupPassword = false;
+  function displayPasswordSetup() {
+    setupPassword = true;
     if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     dashboard.classList.add("hidden");
     loginScreen.classList.add("hidden");
-    passwordScreen.classList.remove("hidden");
-    document.getElementById("passwordTitle").textContent =
-      type === "recovery" ? "Nieuw wachtwoord kiezen" : "Welkom! Stel je wachtwoord in";
-    document.getElementById("passwordError").textContent = "";
+    document.getElementById("passwordScreen").classList.remove("hidden");
   }
-
-  document.getElementById("forgotPasswordButton").addEventListener("click", async () => {
-    const email = document.getElementById("email").value.trim();
-    const box = document.getElementById("loginError");
-    if (!email) { box.textContent = "Vul eerst je e-mailadres in."; return; }
-    const button = document.getElementById("forgotPasswordButton");
-    button.disabled = true;
-    try {
-      const { error } = await db.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname
-      });
-      box.textContent = error ? error.message :
-        "Als dit e-mailadres bestaat, ontvang je een link om je wachtwoord opnieuw in te stellen.";
-    } catch (e) { box.textContent = e.message; }
-    finally { button.disabled = false; }
-  });
-
-  document.getElementById("passwordForm").addEventListener("submit", async (event) => {
+  document.getElementById("newPasswordForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const box = document.getElementById("passwordError");
-    const password = document.getElementById("newPassword").value;
-    const confirmation = document.getElementById("confirmPassword").value;
-    if (password !== confirmation) { box.textContent = "Wachtwoorden komen niet overeen."; return; }
+    const msg = document.getElementById("passwordMessage");
+    const pass = document.getElementById("newPassword").value;
+    if (pass !== document.getElementById("repeatPassword").value) {
+      msg.textContent = "De wachtwoorden zijn niet gelijk."; return;
+    }
     const button = event.currentTarget.querySelector("button");
     button.disabled = true;
-    box.textContent = "";
     try {
-      const { data: { user }, error: userError } = await db.auth.getUser();
-      if (userError || !user) throw new Error("De uitnodiging is verlopen of ongeldig. Vraag een nieuwe uitnodiging aan.");
-      const { error } = await db.auth.updateUser({ password });
+      const { data: { user } } = await db.auth.getUser();
+      if (!user) throw new Error("De uitnodiging is ongeldig of verlopen. Vraag een nieuwe uitnodiging aan.");
+      const { error } = await db.auth.updateUser({ password: pass });
       if (error) throw error;
-      passwordSetupPending = false;
-      passwordScreen.classList.add("hidden");
-      document.getElementById("passwordForm").reset();
+      setupPassword = false;
+      document.getElementById("passwordScreen").classList.add("hidden");
       await showDashboard();
-    } catch (e) { box.textContent = e.message; }
+    } catch (e) { msg.textContent = e.message; }
     finally { button.disabled = false; }
+  });
+  document.getElementById("forgotPassword").addEventListener("click", async () => {
+    const email = document.getElementById("email").value.trim();
+    const msg = document.getElementById("loginError");
+    if (!email) { msg.textContent = "Vul eerst je e-mailadres in."; return; }
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+      redirectTo: location.origin + location.pathname
+    });
+    msg.textContent = error ? error.message : "Als het adres bestaat, ontvang je een herstelmail.";
   });
 
   // CONTROLEER DE ACTIEVE GEBRUIKER
 
   async function showDashboard() {
-   if (passwordSetupPending) { showPasswordScreen(passwordFlow); return; }
+  if (setupPassword) { displayPasswordSetup(); return; }
   const { data: { user } } = await db.auth.getUser();
 
   if (!user) {
@@ -998,26 +977,27 @@ const db = window.supabase.createClient(
     OWNER_ID = null;
     if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     dashboard.classList.add('hidden');
-    passwordScreen.classList.add('hidden');
+    document.getElementById('passwordScreen').classList.add('hidden');
     loginScreen.classList.remove('hidden');
   }
 
-  // Uitnodigingen en herstel-links krijgen voorrang op automatisch inloggen.
+  // Bij invite/recovery eerst een wachtwoord laten kiezen.
+  // Supabase kan de tokens in de URL-fragmenten tijdens initialisatie verwerken.
+  const initialHash = new URLSearchParams(location.hash.slice(1));
+  const inviteOrRecovery = ["invite", "recovery"].includes(initialHash.get("type"));
+  const linkError = initialHash.get("error_description");
+  if (inviteOrRecovery) setupPassword = true;
   db.auth.onAuthStateChange((event) => {
-    if (event === "PASSWORD_RECOVERY") showPasswordScreen("recovery");
+    if (event === "PASSWORD_RECOVERY") displayPasswordSetup();
   });
   db.auth.getSession().then(({ data }) => {
-    if (passwordSetupPending && data?.session) showPasswordScreen(passwordFlow);
-    else if (data?.session) showDashboard();
+    if (data.session && setupPassword) displayPasswordSetup();
+    else if (data.session) showDashboard();
     else {
       showLogin();
-      document.getElementById("loginError").textContent = initialAuthError
-        ? "De link kon niet worden verwerkt: " + initialAuthError
-        : passwordSetupPending ? "De uitnodiging kon niet worden bevestigd. Vraag een nieuwe uitnodiging aan." : "";
+      if (linkError) document.getElementById("loginError").textContent = "Link ongeldig: " + linkError;
+      else if (inviteOrRecovery) document.getElementById("loginError").textContent = "De link is verlopen of kon niet worden verwerkt. Vraag een nieuwe aan.";
     }
-  }).catch(e => {
-    showLogin();
-    document.getElementById("loginError").textContent = e.message;
   });
 
 </script>
